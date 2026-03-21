@@ -1,0 +1,6 @@
+#!/bin/bash
+# ABOUTME: Thin wrapper that invokes phrasectl.py via uv for automatic dependency management.
+# ABOUTME: Symlinked into ~/.local/bin/ for system-wide access.
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+exec uv run --script "$SCRIPT_DIR/phrasectl.py" "$@"

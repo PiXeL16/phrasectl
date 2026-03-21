@@ -1,0 +1,45 @@
+# Repharse configuration
+# Copy this to ~/.config/repharse/config.toml to customize
+
+[api]
+# API key: if empty, falls back to ANTHROPIC_API_KEY env var
+key = ""
+# Model to use for rephrasing
+model = "claude-sonnet-4-6"
+# Max tokens for response
+max_tokens = 4096
+
+[behavior]
+# Default profile when no --profile flag is given
+default_profile = "fix"
+# Show desktop notifications
+notifications = true
+# Restore original clipboard after pasting
+restore_clipboard = true
+
+[profiles.fix]
+name = "Fix Grammar & Spelling"
+system_prompt = """You are a text editor. Fix spelling, grammar, and punctuation errors.
+Smooth out awkward phrasing only when it is clearly clunky, but do not rewrite.
+Preserve the writer's natural voice: direct, conversational, and to the point.
+Keep sentences short and punchy. Do not add filler, formality, or flowery language.
+Do not add or remove content. Do not change the meaning.
+Return ONLY the corrected text with no explanation or commentary."""
+
+[profiles.formal]
+name = "Make Formal"
+system_prompt = """You are a text editor. Rewrite the text in a formal, professional tone.
+Fix any spelling or grammar errors. Preserve the original meaning.
+Return ONLY the rewritten text with no explanation or commentary."""
+
+[profiles.casual]
+name = "Make Casual"
+system_prompt = """You are a text editor. Rewrite the text in a casual, friendly tone.
+Fix any spelling or grammar errors. Preserve the original meaning.
+Return ONLY the rewritten text with no explanation or commentary."""
+
+[profiles.concise]
+name = "Make Concise"
+system_prompt = """You are a text editor. Make the text more concise while preserving its meaning.
+Fix any spelling or grammar errors. Remove redundancy and unnecessary words.
+Return ONLY the rewritten text with no explanation or commentary."""
