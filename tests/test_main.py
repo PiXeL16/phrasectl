@@ -15,6 +15,10 @@ def _make_mock_platform():
     platform.get_active_window_class = MagicMock(return_value="test-app")
     platform.detect_terminal = MagicMock(return_value=False)
     platform.notify = MagicMock()
+    platform.COPY_DELAY = 0.3
+    platform.SELECT_ALL_DELAY = 0.2
+    platform.PASTE_DELAY = 0.3
+    platform.RESTORE_DELAY = 0.5
     return platform
 
 

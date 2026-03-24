@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # Copy the selected text
     platform.send_copy(is_terminal)
-    time.sleep(0.3)
+    time.sleep(platform.COPY_DELAY)
 
     # Read what was copied
     selected_text = platform.get_clipboard()
@@ -77,9 +77,9 @@ def main(argv: list[str] | None = None) -> None:
     # If nothing was selected, select all and try again
     if not selected_text or selected_text == original_clipboard:
         platform.send_select_all(is_terminal)
-        time.sleep(0.2)
+        time.sleep(platform.SELECT_ALL_DELAY)
         platform.send_copy(is_terminal)
-        time.sleep(0.3)
+        time.sleep(platform.COPY_DELAY)
         selected_text = platform.get_clipboard()
 
     # Check if anything was actually selected (even after select-all fallback)
@@ -101,11 +101,11 @@ def main(argv: list[str] | None = None) -> None:
     # Put result in clipboard and paste
     platform.set_clipboard(result)
     platform.send_paste(is_terminal)
-    time.sleep(0.3)
+    time.sleep(platform.PASTE_DELAY)
 
     # Restore original clipboard
     if config.behavior.restore_clipboard:
-        time.sleep(0.5)
+        time.sleep(platform.RESTORE_DELAY)
         platform.set_clipboard(original_clipboard)
 
     platform.notify("phrasectl", "Done!", enabled=notifications_on)

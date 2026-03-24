@@ -6,6 +6,11 @@ from __future__ import annotations
 import json
 import subprocess
 
+# Timing delays (seconds) for keystroke-to-clipboard synchronization
+COPY_DELAY = 0.3
+SELECT_ALL_DELAY = 0.2
+PASTE_DELAY = 0.3
+RESTORE_DELAY = 0.5
 
 TERMINAL_CLASSES = {
     "com.mitchellh.ghostty",

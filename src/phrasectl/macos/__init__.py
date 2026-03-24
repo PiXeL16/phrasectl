@@ -5,6 +5,12 @@ from __future__ import annotations
 
 import subprocess
 
+# Timing delays (seconds) for keystroke-to-clipboard synchronization.
+# osascript has more overhead than wtype, so macOS needs longer delays.
+COPY_DELAY = 0.5
+SELECT_ALL_DELAY = 0.5
+PASTE_DELAY = 0.5
+RESTORE_DELAY = 0.7
 
 TERMINAL_APPS = {
     "terminal",
