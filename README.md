@@ -1,19 +1,21 @@
 # phrasectl
 
-AI-powered text rephrasing for Linux/Wayland. Select text in any app, press a hotkey, get it fixed.
+AI-powered text rephrasing for Linux/Wayland and macOS. Select text in any app, press a hotkey, get it fixed.
 
 ## How it works
 
 1. Select text in any app (Slack, Discord, email, browser, terminal)
-2. Press `Super+Shift+R`
+2. Press your hotkey (`Super+Shift+R` on Linux, customizable on macOS)
 3. phrasectl copies the text, sends it to Claude, and pastes the result back
 4. If nothing is selected, it selects all text in the input field first
 
-Works with any Wayland app. Detects terminals automatically for correct copy/paste shortcuts.
+Works with any Wayland app on Linux and any app on macOS. Detects terminals automatically for correct copy/paste shortcuts on Linux.
 
 ## Requirements
 
-- Linux with [Hyprland](https://hyprland.org/) (Wayland)
+### Linux (Hyprland/Wayland)
+
+- [Hyprland](https://hyprland.org/) (Wayland compositor)
 - [uv](https://docs.astral.sh/uv/) (Python package runner)
 - `wl-copy`, `wl-paste` (from `wl-clipboard`)
 - `wtype` (Wayland key simulation)
@@ -26,32 +28,65 @@ On Arch Linux:
 pacman -S wl-clipboard wtype libnotify
 ```
 
+### macOS
+
+- [uv](https://docs.astral.sh/uv/) (Python package runner)
+- An [Anthropic API key](https://console.anthropic.com/)
+
+All other tools (`pbcopy`, `pbpaste`, `osascript`) are built into macOS.
+
 ## Install
 
 ```bash
 git clone https://github.com/PiXeL16/phrasectl.git
 cd phrasectl
-./install.sh
+
+# Linux (Hyprland/Wayland)
+./install_linux.sh
+
+# macOS
+./install_macos.sh
 ```
 
-The installer will:
-- Check all prerequisites
-- Copy the default config to `~/.config/phrasectl/config.toml`
-- Symlink `phrasectl` to `~/.local/bin/`
-- Add a `Super+Shift+R` keybinding to Hyprland
-- Pre-cache Python dependencies
+### Linux installer
+
+- Checks all prerequisites
+- Copies the default config to `~/.config/phrasectl/config.toml`
+- Symlinks `phrasectl` to `~/.local/bin/`
+- Adds a `Super+Shift+R` keybinding to Hyprland
+- Pre-caches Python dependencies
+
+### macOS installer
+
+- Checks prerequisites
+- Copies the default config to `~/.config/phrasectl/config.toml`
+- Symlinks `phrasectl` to `~/.local/bin/`
+- Creates an Automator Quick Action (assignable to any keyboard shortcut)
+- Pre-caches Python dependencies
+
+After installing on macOS, assign a keyboard shortcut:
+1. System Settings > Keyboard > Keyboard Shortcuts > Services
+2. Find "Rephrase with phrasectl" under General
+3. Click "Add Shortcut" and press your desired key combination
+
+Note: macOS requires Accessibility permissions for each app you use the shortcut in. The first time you trigger it in a new app, macOS will prompt you to grant access in System Settings > Privacy & Security > Accessibility.
 
 ### API Key
 
-Set your Anthropic API key with one of these methods:
+Set your Anthropic API key:
 
 **Option 1: Environment variable (recommended)**
 
 ```bash
-echo 'ANTHROPIC_API_KEY=your-key-here' > ~/.config/environment.d/phrasectl.conf
+# Add to ~/.zshrc (macOS) or ~/.bashrc (Linux)
+export ANTHROPIC_API_KEY='your-key-here'
 ```
 
-Then log out and back in for it to take effect.
+On Linux you can also use systemd user environment:
+
+```bash
+echo 'ANTHROPIC_API_KEY=your-key-here' > ~/.config/environment.d/phrasectl.conf
+```
 
 **Option 2: Config file**
 
@@ -125,12 +160,10 @@ uv run --extra dev pytest tests/test_config.py -v
 
 ## How it's built
 
-- Single Python script (`phrasectl.py`) with [PEP 723](https://peps.python.org/pep-0723/) inline dependencies
-- `uv run --script` handles the virtual environment and `anthropic` package automatically
-- `wtype` for key simulation (Ctrl+C/V for GUI apps, Ctrl+Shift+C/V for terminals)
-- `wl-copy`/`wl-paste` for clipboard access
-- `hyprctl` for active window detection
-- `notify-send` for desktop notifications
+- Python package (`src/phrasectl/`) with platform-specific modules
+- `uv run` handles the virtual environment and `anthropic` package automatically
+- **Linux**: `wtype` for key simulation, `wl-copy`/`wl-paste` for clipboard, `hyprctl` for window detection, `notify-send` for notifications
+- **macOS**: `osascript` (AppleScript) for key simulation, window detection, and notifications; `pbcopy`/`pbpaste` for clipboard
 
 ## License
 

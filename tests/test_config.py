@@ -10,7 +10,7 @@ import pytest
 
 def test_load_config_from_file(tmp_path):
     """Loading a valid TOML config file returns a Config with correct values."""
-    from phrasectl import load_config
+    from phrasectl.config import load_config
 
     config_file = tmp_path / "config.toml"
     config_file.write_text("""
@@ -43,7 +43,7 @@ system_prompt = "Fix the text."
 
 def test_load_config_missing_file_uses_defaults():
     """When config file doesn't exist, returns Config with sensible defaults."""
-    from phrasectl import load_config
+    from phrasectl.config import load_config
 
     config = load_config("/nonexistent/path/config.toml")
     assert config.api.key == ""
@@ -57,7 +57,7 @@ def test_load_config_missing_file_uses_defaults():
 
 def test_api_key_falls_back_to_env_var(tmp_path):
     """When config has empty API key, resolve_api_key returns env var value."""
-    from phrasectl import load_config, resolve_api_key
+    from phrasectl.config import load_config, resolve_api_key
 
     config_file = tmp_path / "config.toml"
     config_file.write_text("""
@@ -83,7 +83,7 @@ system_prompt = "Fix."
 
 def test_api_key_prefers_config_over_env(tmp_path):
     """Config file API key takes precedence over environment variable."""
-    from phrasectl import load_config, resolve_api_key
+    from phrasectl.config import load_config, resolve_api_key
 
     config_file = tmp_path / "config.toml"
     config_file.write_text("""
@@ -109,7 +109,7 @@ system_prompt = "Fix."
 
 def test_api_key_returns_none_when_nowhere_set(tmp_path):
     """When no API key in config or env, resolve_api_key returns None."""
-    from phrasectl import load_config, resolve_api_key
+    from phrasectl.config import load_config, resolve_api_key
 
     config_file = tmp_path / "config.toml"
     config_file.write_text("""
@@ -139,7 +139,7 @@ system_prompt = "Fix."
 
 def test_resolve_profile_by_name(tmp_path):
     """resolve_profile returns the named profile from config."""
-    from phrasectl import load_config, resolve_profile
+    from phrasectl.config import load_config, resolve_profile
 
     config_file = tmp_path / "config.toml"
     config_file.write_text("""
@@ -170,7 +170,7 @@ system_prompt = "Make formal."
 
 def test_resolve_profile_uses_default_when_none(tmp_path):
     """resolve_profile with None uses the default_profile from config."""
-    from phrasectl import load_config, resolve_profile
+    from phrasectl.config import load_config, resolve_profile
 
     config_file = tmp_path / "config.toml"
     config_file.write_text("""
@@ -196,7 +196,7 @@ system_prompt = "Fix it."
 
 def test_resolve_profile_unknown_name_raises(tmp_path):
     """resolve_profile raises ValueError for an unknown profile name."""
-    from phrasectl import load_config, resolve_profile
+    from phrasectl.config import load_config, resolve_profile
 
     config_file = tmp_path / "config.toml"
     config_file.write_text("""
@@ -222,7 +222,7 @@ system_prompt = "Fix it."
 
 def test_load_config_invalid_toml(tmp_path):
     """Invalid TOML raises a ConfigError with a helpful message."""
-    from phrasectl import ConfigError, load_config
+    from phrasectl.config import ConfigError, load_config
 
     config_file = tmp_path / "config.toml"
     config_file.write_text("this is not [valid toml = ")
@@ -233,7 +233,7 @@ def test_load_config_invalid_toml(tmp_path):
 
 def test_load_config_partial_sections_use_defaults(tmp_path):
     """Config with missing sections fills in defaults for those sections."""
-    from phrasectl import load_config
+    from phrasectl.config import load_config
 
     config_file = tmp_path / "config.toml"
     config_file.write_text("""

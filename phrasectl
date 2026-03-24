@@ -1,6 +1,29 @@
 #!/bin/bash
-# ABOUTME: Thin wrapper that invokes phrasectl.py via uv for automatic dependency management.
+# ABOUTME: Thin wrapper that invokes phrasectl via uv for automatic dependency management.
 # ABOUTME: Symlinked into ~/.local/bin/ for system-wide access.
 
-SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
-exec uv run --script "$SCRIPT_DIR/phrasectl.py" "$@"
+# Resolve symlinks to find the real project directory (portable across Linux and macOS)
+SELF="${BASH_SOURCE[0]}"
+if [ -L "$SELF" ]; then
+    TARGET="$(readlink "$SELF")"
+    # Handle relative symlink targets
+    if [[ "$TARGET" != /* ]]; then
+        TARGET="$(dirname "$SELF")/$TARGET"
+    fi
+    SELF="$TARGET"
+fi
+SCRIPT_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+
+# When launched from Automator/Services, shell env vars aren't inherited.
+# Source the user's shell environment to pick up ANTHROPIC_API_KEY and similar.
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+    for envfile in "$HOME/.zshenv" "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc"; do
+        if [ -f "$envfile" ]; then
+            source "$envfile" 2>/dev/null
+            # Stop once the key is found
+            [ -n "$ANTHROPIC_API_KEY" ] && break
+        fi
+    done
+fi
+
+exec uv run --project "$SCRIPT_DIR" python -m phrasectl "$@"

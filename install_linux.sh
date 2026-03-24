@@ -1,6 +1,6 @@
 #!/bin/bash
-# ABOUTME: Installer for phrasectl — checks prereqs, copies config, creates symlink, adds keybinding.
-# ABOUTME: Run once to set up the tool system-wide.
+# ABOUTME: Linux/Wayland installer for phrasectl — checks prereqs, copies config, creates symlink, adds keybinding.
+# ABOUTME: Run once to set up the tool system-wide on Linux with Hyprland.
 
 set -euo pipefail
 
@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="$HOME/.config/phrasectl"
 BINDINGS_FILE="$HOME/.config/hypr/bindings.conf"
 
-echo "=== phrasectl Installer ==="
+echo "=== phrasectl Installer (Linux) ==="
 echo ""
 
 # Check prerequisites
@@ -38,13 +38,13 @@ fi
 
 # Make wrapper executable and symlink
 chmod +x "$SCRIPT_DIR/phrasectl"
-chmod +x "$SCRIPT_DIR/phrasectl.py"
+mkdir -p "$HOME/.local/bin"
 ln -sf "$SCRIPT_DIR/phrasectl" "$HOME/.local/bin/phrasectl"
 echo "Symlinked phrasectl to ~/.local/bin/phrasectl"
 
 # Pre-cache uv dependencies
 echo "Pre-caching dependencies..."
-uv run --script "$SCRIPT_DIR/phrasectl.py" --list-profiles
+uv run --project "$SCRIPT_DIR" python -m phrasectl --list-profiles
 echo ""
 
 # Add Hyprland keybinding
