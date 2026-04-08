@@ -7,10 +7,16 @@ import json
 import subprocess
 
 # Timing delays (seconds) for keystroke-to-clipboard synchronization
-COPY_DELAY = 0.3
-SELECT_ALL_DELAY = 0.2
+MODIFIER_RELEASE_DELAY = 0.5
+COPY_DELAY = 0.5
+SENTINEL_DELAY = 0.1
+SELECT_ALL_DELAY = 0.3
 PASTE_DELAY = 0.3
 RESTORE_DELAY = 0.5
+
+# Sentinel value placed in clipboard before sending copy keystroke.
+# If clipboard still contains this after copy, the copy didn't work.
+COPY_SENTINEL = "__phrasectl_awaiting_copy__"
 
 TERMINAL_CLASSES = {
     "com.mitchellh.ghostty",

@@ -7,10 +7,16 @@ import subprocess
 
 # Timing delays (seconds) for keystroke-to-clipboard synchronization.
 # osascript has more overhead than wtype, so macOS needs longer delays.
+MODIFIER_RELEASE_DELAY = 0.3
 COPY_DELAY = 0.5
+SENTINEL_DELAY = 0.1
 SELECT_ALL_DELAY = 0.5
 PASTE_DELAY = 0.5
 RESTORE_DELAY = 0.7
+
+# Sentinel value placed in clipboard before sending copy keystroke.
+# If clipboard still contains this after copy, the copy didn't work.
+COPY_SENTINEL = "__phrasectl_awaiting_copy__"
 
 TERMINAL_APPS = {
     "terminal",

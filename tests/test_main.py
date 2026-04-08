@@ -15,10 +15,13 @@ def _make_mock_platform():
     platform.get_active_window_class = MagicMock(return_value="test-app")
     platform.detect_terminal = MagicMock(return_value=False)
     platform.notify = MagicMock()
-    platform.COPY_DELAY = 0.3
-    platform.SELECT_ALL_DELAY = 0.2
+    platform.MODIFIER_RELEASE_DELAY = 0.5
+    platform.COPY_DELAY = 0.5
+    platform.SENTINEL_DELAY = 0.1
+    platform.SELECT_ALL_DELAY = 0.3
     platform.PASTE_DELAY = 0.3
     platform.RESTORE_DELAY = 0.5
+    platform.COPY_SENTINEL = "__phrasectl_awaiting_copy__"
     return platform
 
 
@@ -59,12 +62,16 @@ def test_main_flow_happy_path():
 
 
 def test_main_flow_no_selection_falls_back_to_select_all():
-    """When clipboard doesn't change after copy, select all then copy and rephrase."""
+    """When clipboard still has sentinel after copy, select all then copy and rephrase."""
     from phrasectl.__main__ import main
     from phrasectl.config import ApiConfig, BehaviorConfig, Config, Profile
 
     mock_platform = _make_mock_platform()
-    mock_platform.get_clipboard.side_effect = ["original", "original", "all the text"]
+    mock_platform.get_clipboard.side_effect = [
+        "original",
+        mock_platform.COPY_SENTINEL,
+        "all the text",
+    ]
 
     mock_config = Config(
         api=ApiConfig(key="sk-test"),
@@ -90,12 +97,17 @@ def test_main_flow_no_selection_falls_back_to_select_all():
 
 
 def test_main_flow_no_selection_and_select_all_empty():
-    """When both copy and select-all+copy find nothing, notify and exit."""
+    """When both copy and select-all+copy find nothing, notify and restore clipboard."""
     from phrasectl.__main__ import main
     from phrasectl.config import ApiConfig, BehaviorConfig, Config, Profile
 
     mock_platform = _make_mock_platform()
-    mock_platform.get_clipboard.return_value = "same clipboard"
+    sentinel = mock_platform.COPY_SENTINEL
+    mock_platform.get_clipboard.side_effect = [
+        "original clipboard",
+        sentinel,
+        sentinel,
+    ]
 
     mock_config = Config(
         api=ApiConfig(key="sk-test"),
@@ -119,6 +131,10 @@ def test_main_flow_no_selection_and_select_all_empty():
     # Should notify about no selection
     notify_calls = [str(c) for c in mock_platform.notify.call_args_list]
     assert any("No text selected" in c for c in notify_calls)
+
+    # Should restore original clipboard (we clobbered it with sentinel)
+    set_calls = mock_platform.set_clipboard.call_args_list
+    assert call("original clipboard") in set_calls
 
 
 def test_main_flow_no_api_key():
@@ -178,8 +194,9 @@ def test_main_flow_api_error_restores_clipboard():
     # Should NOT paste
     mock_platform.send_paste.assert_not_called()
 
-    # Should restore original clipboard
-    mock_platform.set_clipboard.assert_called_once_with("original")
+    # Should restore original clipboard (sentinel + restore = 2 calls)
+    set_calls = mock_platform.set_clipboard.call_args_list
+    assert call("original") in set_calls
 
     # Should notify about error
     notify_calls = [str(c) for c in mock_platform.notify.call_args_list]
@@ -235,5 +252,7 @@ def test_main_flow_no_clipboard_restore():
     ):
         main(["--config", "/fake/config.toml"])
 
-    # Should only set clipboard once (the rephrased text), not restore
-    mock_platform.set_clipboard.assert_called_once_with("rephrased")
+    # Should set clipboard with sentinel + rephrased text, but NOT restore original
+    set_calls = mock_platform.set_clipboard.call_args_list
+    assert call("rephrased") in set_calls
+    assert call("original") not in set_calls
