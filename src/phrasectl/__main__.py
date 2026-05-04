@@ -32,6 +32,11 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="AI text rephrasing tool")
     parser.add_argument("--profile", default=None, help="Rephrase profile to use")
     parser.add_argument("--list-profiles", action="store_true", help="List available profiles")
+    parser.add_argument(
+        "--stdio",
+        action="store_true",
+        help="Read text from stdin, print rephrased text to stdout (no clipboard/keystrokes)",
+    )
     parser.add_argument("--config", default=DEFAULT_CONFIG_PATH, help="Path to config file")
     args = parser.parse_args(argv)
 
@@ -59,6 +64,13 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     profile = resolve_profile(config, args.profile)
+
+    # stdio mode: text in/out via stdin/stdout. Used by macOS Quick Action
+    # set to "receives selected text" + "output replaces selected text",
+    # which avoids needing Accessibility permission per app.
+    if args.stdio:
+        _run_stdio(platform, config, profile, notifications_on)
+        return
 
     # Detect if we're in a terminal for correct copy/paste shortcuts
     window_class = platform.get_active_window_class()
@@ -119,6 +131,32 @@ def main(argv: list[str] | None = None) -> None:
         time.sleep(platform.RESTORE_DELAY)
         platform.set_clipboard(original_clipboard)
 
+    platform.notify("phrasectl", "Done!", enabled=notifications_on)
+
+
+def _run_stdio(platform: ModuleType, config, profile, notifications_on: bool) -> None:
+    """Read text from stdin, rephrase, write result to stdout.
+
+    On API failure, the original text is written back to stdout so a Services
+    invocation that replaces the selection doesn't blank it out.
+    """
+    selected_text = sys.stdin.read()
+    if not selected_text:
+        platform.notify("phrasectl", "No text received", enabled=notifications_on)
+        return
+
+    platform.notify(
+        "phrasectl", f"Rephrasing with '{profile.name}'...", enabled=notifications_on
+    )
+
+    try:
+        result = rephrase_text(config, profile, selected_text)
+    except Exception as e:
+        platform.notify("phrasectl Error", str(e), enabled=notifications_on)
+        sys.stdout.write(selected_text)
+        return
+
+    sys.stdout.write(result)
     platform.notify("phrasectl", "Done!", enabled=notifications_on)
 
 

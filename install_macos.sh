@@ -51,15 +51,27 @@ echo "Pre-caching dependencies..."
 uv run --project "$SCRIPT_DIR" python -m phrasectl --list-profiles
 echo ""
 
-# Create Automator Quick Action (.workflow)
-if [ -d "$WORKFLOW_DIR" ]; then
-    echo "Quick Action already exists at $WORKFLOW_DIR (not overwriting)"
-else
-    echo "Creating Quick Action..."
-    mkdir -p "$WORKFLOW_DIR/Contents"
+# Ad-hoc codesign native libraries in the venv. Required so AMFI doesn't block
+# them when phrasectl is launched from a Quick Action (Services context is
+# stricter than terminal). Without this, pydantic_core / jiter fail to load
+# and the Service shows "not configured correctly".
+VENV_DIR="$SCRIPT_DIR/.venv"
+if [ -d "$VENV_DIR" ]; then
+    echo "Codesigning venv native libraries..."
+    find "$VENV_DIR" \( -name "*.so" -o -name "*.dylib" \) -exec codesign --force --sign - {} \; 2>/dev/null
+fi
+echo ""
 
-    # Info.plist — minimal bundle metadata
-    cat > "$WORKFLOW_DIR/Contents/Info.plist" << 'PLIST'
+# Create Automator Quick Action (.workflow)
+# Always rewrite — the workflow is generated, not user-customized, and re-running
+# the installer should pick up upgrades to the workflow definition.
+echo "Writing Quick Action..."
+mkdir -p "$WORKFLOW_DIR/Contents"
+
+# Info.plist — minimal bundle metadata for a Service that takes no input
+# and synthesizes Cmd+C / Cmd+V via osascript to grab and replace the
+# selection. Requires per-app Accessibility permission.
+cat > "$WORKFLOW_DIR/Contents/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -86,8 +98,10 @@ else
 </plist>
 PLIST
 
-    # document.wflow — Quick Action that runs a shell script with no input
-    cat > "$WORKFLOW_DIR/Contents/document.wflow" << WFLOW
+# document.wflow — Service that takes no input. The shell script invokes
+# phrasectl, which synthesizes Cmd+C to grab the selection, calls the API,
+# and synthesizes Cmd+V to paste the result back.
+cat > "$WORKFLOW_DIR/Contents/document.wflow" << WFLOW
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -259,24 +273,24 @@ phrasectl</string>
 </plist>
 WFLOW
 
-    echo "Created Quick Action: $SERVICE_NAME"
+echo "Wrote Quick Action: $SERVICE_NAME"
 
-    # Flush the services cache so macOS picks up the new Quick Action
-    /System/Library/CoreServices/pbs -flush 2>/dev/null || true
-    echo ""
-    echo "To assign a keyboard shortcut:"
-    echo "  1. Open System Settings > Keyboard > Keyboard Shortcuts > Services"
-    echo "  2. Find 'Rephrase with phrasectl' under 'General'"
-    echo "  3. Click 'Add Shortcut' and press your desired key combination"
-    echo "     (e.g., Cmd+Shift+R)"
-    echo ""
-    echo "  Note: macOS requires Accessibility permissions for each app you use"
-    echo "  the shortcut in. The first time you trigger it in a new app, macOS"
-    echo "  will prompt you to grant access in System Settings > Privacy &"
-    echo "  Security > Accessibility."
-    echo ""
-    echo "  If the service doesn't appear, try logging out and back in."
-fi
+# Flush the services cache so macOS picks up the new Quick Action
+/System/Library/CoreServices/pbs -flush 2>/dev/null || true
+echo ""
+echo "To assign a keyboard shortcut:"
+echo "  1. Open System Settings > Keyboard > Keyboard Shortcuts > Services"
+echo "  2. Find 'Rephrase with phrasectl' under 'General'"
+echo "  3. Click 'Add Shortcut' and press your desired key combination"
+echo "     (e.g., Cmd+Shift+R)"
+echo ""
+echo "  Note: macOS requires Accessibility permissions for each app you use"
+echo "  the shortcut in. The first time you trigger it in a new app, macOS"
+echo "  will prompt you to grant access in System Settings > Privacy &"
+echo "  Security > Accessibility. If the prompt doesn't appear, add the"
+echo "  app manually there."
+echo ""
+echo "  If the service doesn't appear, try logging out and back in."
 
 # API key check
 echo ""

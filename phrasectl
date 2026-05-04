@@ -1,5 +1,5 @@
 #!/bin/bash
-# ABOUTME: Thin wrapper that invokes phrasectl via uv for automatic dependency management.
+# ABOUTME: Thin wrapper that invokes phrasectl from the project's venv.
 # ABOUTME: Symlinked into ~/.local/bin/ for system-wide access.
 
 # Resolve symlinks to find the real project directory (portable across Linux and macOS)
@@ -26,4 +26,17 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     done
 fi
 
+# Invoke the venv's python directly. This avoids `uv run`, which extracts
+# an unsigned dylib into TMPDIR at startup — macOS AMFI blocks unsigned
+# binaries when launched from a Services/Quick Action context, so going
+# through the venv directly is the only way to make the macOS Quick Action
+# reliably work. The venv is created at install time by install_*.sh.
+VENV_PY="$SCRIPT_DIR/.venv/bin/python"
+if [ -x "$VENV_PY" ]; then
+    exec "$VENV_PY" -m phrasectl "$@"
+fi
+
+# Fallback for development: the venv hasn't been built yet. Use uv to set
+# everything up. This path won't work from a Quick Action on macOS, but is
+# fine from a terminal.
 exec uv run --project "$SCRIPT_DIR" python -m phrasectl "$@"

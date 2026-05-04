@@ -266,6 +266,102 @@ def test_main_list_profiles(capsys):
     assert "Make Formal" in captured.out
 
 
+def test_main_stdio_mode_reads_stdin_writes_stdout(capsys, monkeypatch):
+    """--stdio reads text from stdin and prints rephrased result to stdout, no keystrokes."""
+    import io
+
+    from phrasectl.__main__ import main
+    from phrasectl.config import ApiConfig, BehaviorConfig, Config, Profile
+
+    mock_platform = _make_mock_platform()
+    mock_config = Config(
+        api=ApiConfig(key="sk-test"),
+        behavior=BehaviorConfig(default_profile="fix"),
+        profiles={"fix": Profile(name="Fix", system_prompt="Fix.")},
+    )
+
+    monkeypatch.setattr("sys.stdin", io.StringIO("input text"))
+
+    with (
+        patch("phrasectl.__main__.load_config", return_value=mock_config),
+        patch("phrasectl.__main__.resolve_api_key", return_value="sk-test"),
+        patch("phrasectl.__main__.get_platform", return_value=mock_platform),
+        patch("phrasectl.__main__.rephrase_text", return_value="rephrased text") as mock_rephrase,
+    ):
+        main(["--stdio", "--config", "/fake/config.toml"])
+
+    mock_platform.send_copy.assert_not_called()
+    mock_platform.send_paste.assert_not_called()
+    mock_platform.send_select_all.assert_not_called()
+    mock_platform.set_clipboard.assert_not_called()
+
+    mock_rephrase.assert_called_once()
+    assert mock_rephrase.call_args[0][2] == "input text"
+
+    captured = capsys.readouterr()
+    assert captured.out == "rephrased text"
+
+
+def test_main_stdio_mode_api_error_preserves_original(capsys, monkeypatch):
+    """When API fails in --stdio mode, original text is written to stdout so selection isn't blanked."""
+    import io
+
+    from phrasectl.__main__ import main
+    from phrasectl.config import ApiConfig, BehaviorConfig, Config, Profile
+
+    mock_platform = _make_mock_platform()
+    mock_config = Config(
+        api=ApiConfig(key="sk-test"),
+        behavior=BehaviorConfig(default_profile="fix"),
+        profiles={"fix": Profile(name="Fix", system_prompt="Fix.")},
+    )
+
+    monkeypatch.setattr("sys.stdin", io.StringIO("original content"))
+
+    with (
+        patch("phrasectl.__main__.load_config", return_value=mock_config),
+        patch("phrasectl.__main__.resolve_api_key", return_value="sk-test"),
+        patch("phrasectl.__main__.get_platform", return_value=mock_platform),
+        patch("phrasectl.__main__.rephrase_text", side_effect=Exception("API timeout")),
+    ):
+        main(["--stdio", "--config", "/fake/config.toml"])
+
+    captured = capsys.readouterr()
+    assert captured.out == "original content"
+
+    notify_calls = [str(c) for c in mock_platform.notify.call_args_list]
+    assert any("API timeout" in c or "Error" in c for c in notify_calls)
+
+
+def test_main_stdio_mode_empty_stdin(capsys, monkeypatch):
+    """When stdin is empty in --stdio mode, notify and skip the API call."""
+    import io
+
+    from phrasectl.__main__ import main
+    from phrasectl.config import ApiConfig, BehaviorConfig, Config, Profile
+
+    mock_platform = _make_mock_platform()
+    mock_config = Config(
+        api=ApiConfig(key="sk-test"),
+        behavior=BehaviorConfig(default_profile="fix"),
+        profiles={"fix": Profile(name="Fix", system_prompt="Fix.")},
+    )
+
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+
+    with (
+        patch("phrasectl.__main__.load_config", return_value=mock_config),
+        patch("phrasectl.__main__.resolve_api_key", return_value="sk-test"),
+        patch("phrasectl.__main__.get_platform", return_value=mock_platform),
+        patch("phrasectl.__main__.rephrase_text") as mock_rephrase,
+    ):
+        main(["--stdio", "--config", "/fake/config.toml"])
+
+    mock_rephrase.assert_not_called()
+    notify_calls = [str(c) for c in mock_platform.notify.call_args_list]
+    assert any("No text" in c or "no text" in c for c in notify_calls)
+
+
 def test_main_flow_no_clipboard_restore():
     """When restore_clipboard is False, don't restore the original clipboard."""
     from phrasectl.__main__ import main
