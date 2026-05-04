@@ -8,6 +8,7 @@ def _make_mock_platform():
     """Create a mock platform module with all required functions."""
     platform = MagicMock()
     platform.get_clipboard = MagicMock()
+    platform.get_primary_selection = MagicMock(return_value="")
     platform.set_clipboard = MagicMock()
     platform.send_copy = MagicMock()
     platform.send_paste = MagicMock()
@@ -23,6 +24,44 @@ def _make_mock_platform():
     platform.RESTORE_DELAY = 0.5
     platform.COPY_SENTINEL = "__phrasectl_awaiting_copy__"
     return platform
+
+
+def test_main_flow_uses_primary_selection_when_available():
+    """When primary selection has highlighted text, use it without copy keystroke."""
+    from phrasectl.__main__ import main
+    from phrasectl.config import ApiConfig, BehaviorConfig, Config, Profile
+
+    mock_platform = _make_mock_platform()
+    mock_platform.get_clipboard.return_value = "original clipboard"
+    mock_platform.get_primary_selection.return_value = "highlighted text"
+
+    mock_config = Config(
+        api=ApiConfig(key="sk-test"),
+        behavior=BehaviorConfig(
+            default_profile="fix", notifications=True, restore_clipboard=True
+        ),
+        profiles={"fix": Profile(name="Fix", system_prompt="Fix.")},
+    )
+
+    with (
+        patch("phrasectl.__main__.load_config", return_value=mock_config),
+        patch("phrasectl.__main__.resolve_api_key", return_value="sk-test"),
+        patch("phrasectl.__main__.get_platform", return_value=mock_platform),
+        patch("phrasectl.__main__.rephrase_text", return_value="rephrased text") as mock_rephrase,
+        patch("phrasectl.__main__.time.sleep"),
+    ):
+        main(["--profile", "fix", "--config", "/fake/config.toml"])
+
+    # Should NOT send copy keystroke when primary selection has content
+    mock_platform.send_copy.assert_not_called()
+    mock_platform.send_select_all.assert_not_called()
+
+    # Should rephrase the highlighted text from primary selection
+    mock_rephrase.assert_called_once()
+    assert mock_rephrase.call_args[0][2] == "highlighted text"
+
+    # Should paste the rephrased result
+    mock_platform.send_paste.assert_called_once()
 
 
 def test_main_flow_happy_path():

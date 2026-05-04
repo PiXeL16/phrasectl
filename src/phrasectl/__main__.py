@@ -70,30 +70,33 @@ def main(argv: list[str] | None = None) -> None:
     # Save current clipboard for later restoration
     original_clipboard = platform.get_clipboard()
 
-    # Set sentinel so we can detect if the copy keystroke actually worked
-    platform.set_clipboard(platform.COPY_SENTINEL)
-    time.sleep(platform.SENTINEL_DELAY)
+    # Try PRIMARY selection first — highlighted text on Linux/Wayland is auto-stored
+    # without needing a copy keystroke. Works reliably in browsers and contenteditable
+    # elements (LinkedIn, Slack web, etc.) where synthesized Ctrl+C may not.
+    selected_text = platform.get_primary_selection()
 
-    # Copy the selected text
-    platform.send_copy(is_terminal)
-    time.sleep(platform.COPY_DELAY)
+    if not selected_text:
+        # No primary selection — fall back to copy keystroke approach
+        platform.set_clipboard(platform.COPY_SENTINEL)
+        time.sleep(platform.SENTINEL_DELAY)
 
-    # Read what was copied
-    selected_text = platform.get_clipboard()
-
-    # If clipboard still has sentinel, copy didn't work — try select all
-    if selected_text == platform.COPY_SENTINEL:
-        platform.send_select_all(is_terminal)
-        time.sleep(platform.SELECT_ALL_DELAY)
         platform.send_copy(is_terminal)
         time.sleep(platform.COPY_DELAY)
         selected_text = platform.get_clipboard()
 
-    # Still sentinel means nothing was selected at all
-    if selected_text == platform.COPY_SENTINEL:
-        platform.notify("phrasectl", "No text selected", enabled=notifications_on)
-        platform.set_clipboard(original_clipboard)
-        return
+        # If clipboard still has sentinel, copy didn't work — try select all
+        if selected_text == platform.COPY_SENTINEL:
+            platform.send_select_all(is_terminal)
+            time.sleep(platform.SELECT_ALL_DELAY)
+            platform.send_copy(is_terminal)
+            time.sleep(platform.COPY_DELAY)
+            selected_text = platform.get_clipboard()
+
+        # Still sentinel means nothing was selected at all
+        if selected_text == platform.COPY_SENTINEL:
+            platform.notify("phrasectl", "No text selected", enabled=notifications_on)
+            platform.set_clipboard(original_clipboard)
+            return
 
     # Rephrase via API
     platform.notify("phrasectl", f"Rephrasing with '{profile.name}'...", enabled=notifications_on)

@@ -40,6 +40,37 @@ def test_get_clipboard_returns_empty_on_failure():
     assert result == ""
 
 
+def test_get_primary_selection_calls_wl_paste_primary():
+    """get_primary_selection calls wl-paste --primary --no-newline and returns highlighted text."""
+    from phrasectl.linux import get_primary_selection
+
+    mock_result = MagicMock()
+    mock_result.stdout = "highlighted text"
+    mock_result.returncode = 0
+
+    with patch("phrasectl.linux.subprocess.run", return_value=mock_result) as mock_run:
+        result = get_primary_selection()
+
+    mock_run.assert_called_once_with(
+        ["wl-paste", "--primary", "--no-newline"], capture_output=True, text=True
+    )
+    assert result == "highlighted text"
+
+
+def test_get_primary_selection_returns_empty_on_failure():
+    """get_primary_selection returns empty string when wl-paste --primary fails."""
+    from phrasectl.linux import get_primary_selection
+
+    mock_result = MagicMock()
+    mock_result.stdout = ""
+    mock_result.returncode = 1
+
+    with patch("phrasectl.linux.subprocess.run", return_value=mock_result):
+        result = get_primary_selection()
+
+    assert result == ""
+
+
 def test_set_clipboard_pipes_to_wl_copy():
     """set_clipboard pipes text to wl-copy via stdin."""
     from phrasectl.linux import set_clipboard

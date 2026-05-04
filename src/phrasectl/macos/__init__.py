@@ -39,6 +39,14 @@ def get_clipboard() -> str:
     return result.stdout
 
 
+def get_primary_selection() -> str:
+    """macOS has no PRIMARY selection like X11/Wayland — always returns empty.
+
+    The main flow falls back to the copy keystroke approach when this returns "".
+    """
+    return ""
+
+
 def set_clipboard(text: str) -> None:
     """Write text to the clipboard via pbcopy."""
     process = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE)

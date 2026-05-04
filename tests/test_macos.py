@@ -39,6 +39,13 @@ def test_get_clipboard_returns_empty_on_failure():
     assert result == ""
 
 
+def test_get_primary_selection_returns_empty():
+    """macOS has no PRIMARY selection equivalent — always returns empty string."""
+    from phrasectl.macos import get_primary_selection
+
+    assert get_primary_selection() == ""
+
+
 def test_set_clipboard_pipes_to_pbcopy():
     """set_clipboard pipes text to pbcopy via stdin."""
     from phrasectl.macos import set_clipboard

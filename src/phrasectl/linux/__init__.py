@@ -38,6 +38,22 @@ def get_clipboard() -> str:
     return result.stdout
 
 
+def get_primary_selection() -> str:
+    """Read the PRIMARY selection (highlighted text) via wl-paste --primary.
+
+    On Linux/Wayland, highlighted text is automatically placed in the PRIMARY
+    selection buffer without needing a copy keystroke. This works reliably in
+    browsers and contenteditable elements where synthesized Ctrl+C may not.
+    Returns empty string if nothing is highlighted or wl-paste --primary fails.
+    """
+    result = subprocess.run(
+        ["wl-paste", "--primary", "--no-newline"], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout
+
+
 def set_clipboard(text: str) -> None:
     """Write text to the clipboard via wl-copy."""
     process = subprocess.Popen(["wl-copy"], stdin=subprocess.PIPE)
